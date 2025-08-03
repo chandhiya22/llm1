@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat with PDF Bot</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f1f5f9;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      width: 900px;
+      height: 85vh;
+      background-color: white;
+      border-radius: 14px;
+      box-shadow: 0 0 20px rgba(239, 9, 9, 0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      background-color: #007bff;
+      color: white;
+      padding: 16px 24px;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .messages {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      background-color: #f8fafc;
+    }
+
+    .message {
+      display: flex;
+      margin-bottom: 16px;
+      max-width: 75%;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .bot {
+      align-self: flex-start;
+    }
+
+    .avatar {
+      font-size: 22px;
+      margin: 0 10px;
+    }
+
+    .bubble {
+      background-color: #e2e8f0;
+      padding: 12px 16px;
+      border-radius: 16px;
+    }
+
+    .user .bubble {
+      background-color: #007bff;
+      color: white;
+    }
+
+    .chat-input {
+      display: flex;
+      padding: 20px;
+      border-top: 1px solid #e2e8f0;
+      background-color: white;
+    }
+
+    .chat-input select,
+    .chat-input input {
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    .chat-input select {
+      width: 140px;
+    }
+
+    .chat-input input {
+      flex: 1;
+      margin: 0 10px;
+    }
+
+    .chat-input button {
+      background-color: #22c55e;
+      border: none;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .chat-input button:hover {
+      background-color: #16a34a;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">📘 Chat with PDF Bot</div>
+
+    <div class="messages" id="messages">
+      <div class="message bot">
+        <div class="avatar">🤖</div>
+        <div class="bubble">Hi! Ask me anything about your uploaded PDF.</div>
+      </div>
+    </div>
+
+    <div class="chat-input">
+      <select id="language">
+        <option value="en">English</option>
+        <option value="ta">Tamil</option>
+        <option value="hi">Hindi</option>
+        <option value="fr">French</option>
+        <option value="es">Spanish</option>
+        <option value="de">German</option>
+      </select>
+      <input type="text" id="question" placeholder="Type your question..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById("question");
+    const messages = document.getElementById("messages");
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    async function sendMessage() {
+      const text = input.value.trim();
+      const lang = document.getElementById("language").value;
+      if (!text) return;
+
+      addMessage("user", text, "👤");
+      input.value = "";
+
+      const loading = addMessage("bot", "Typing...", "🤖");
+
+      try {
+        const res = await fetch("/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: text, language: lang }),
+        });
+        const data = await res.json();
+        loading.querySelector(".bubble").textContent = data.answer || "⚠️ No answer.";
+      } catch (err) {
+        loading.querySelector(".bubble").textContent = "⚠️ Error fetching response.";
+      }
+    }
+
+    function addMessage(sender, text, icon) {
+      const msg = document.createElement("div");
+      msg.className = "message " + sender;
+
+      const avatar = document.createElement("div");
+      avatar.className = "avatar";
+      avatar.textContent = icon;
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+
+      msg.appendChild(avatar);
+      msg.appendChild(bubble);
+      messages.appendChild(msg);
+      messages.scrollTop = messages.scrollHeight;
+      return msg;
+    }
+  </script>
+</body>
+</html>

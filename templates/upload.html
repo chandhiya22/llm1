@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Multilingual PDF Upload</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 40px;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #f8fafc, #f0f9ff, #fce7f3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .main-container {
+      display: flex;
+      max-width: 1200px;
+      width: 100%;
+      background-color: #ffffff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .left-panel {
+      width: 55%;
+      background: #f8fafc;
+      padding: 60px 50px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .left-panel h1 {
+      font-size: 28px;
+      color: #0f172a;
+      margin-bottom: 20px;
+    }
+
+    .left-panel p {
+      font-size: 15px;
+      color: #475569;
+      line-height: 1.6;
+      max-width: 480px;
+    }
+
+    .right-panel {
+      width: 45%;
+      background: #f1f5f9;
+      padding: 50px 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .upload-box {
+      width: 100%;
+      max-width: 400px;
+      background-color: #e7f3ff; /* ✅ Upload box background */
+      padding: 30px;
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    .upload-box h2 {
+      margin-top: 0;
+      font-size: 24px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .upload-box p {
+      margin: 8px 0 24px;
+      color: #475569;
+      font-size: 14px;
+    }
+
+    .drop-area {
+      border: 2px dashed #94a3b8;
+      border-radius: 12px;
+      padding: 40px 20px;
+      background-color: #ffffff;
+      transition: background-color 0.3s ease;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .drop-area.dragover {
+      background-color: #dbeafe;
+    }
+
+    .drop-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .icon {
+      font-size: 40px;
+    }
+
+    .drop-text {
+      font-size: 15px;
+      color: #334155;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .upload-btn {
+      margin-top: 24px;
+      padding: 12px 24px;
+      background-color: #0ea5e9;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .upload-btn:hover {
+      background-color: #0284c7;
+    }
+
+    .file-name {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #475569;
+    }
+
+    .loading {
+      display: none;
+      margin-top: 20px;
+      font-size: 14px;
+      color: #64748b;
+    }
+
+    .spinner {
+      border: 3px solid #e2e8f0;
+      border-top: 3px solid #0ea5e9;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 8px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 960px) {
+      .main-container {
+        flex-direction: column;
+      }
+
+      .left-panel, .right-panel {
+        width: 100%;
+        padding: 40px 30px;
+      }
+
+      .upload-box {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    <!-- LEFT SIDE DESCRIPTION -->
+    <div class="left-panel">
+      <h1>AI-Powered Multilingual PDF Assistant</h1>
+      <p>
+        Upload any PDF file and interact with it using natural language!<br /><br />
+        This chatbot supports multiple languages including English, Tamil, Hindi, and more.
+        It can answer your questions, summarize content, and help extract insights from your PDF.<br /><br />
+        Just upload your document and start chatting like ChatGPT — now with document awareness.
+      </p>
+    </div>
+
+    <!-- RIGHT SIDE UPLOAD -->
+    <div class="right-panel">
+      <div class="upload-box">
+        <h2>Upload Your PDF</h2>
+        <p>Supported by a Multilingual Chatbot (English, Tamil, Hindi, etc.)</p>
+
+        <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+          <label class="drop-area" id="dropArea" for="fileInput">
+            <div class="drop-content">
+              <div class="icon">📄</div>
+              <div class="drop-text">Click or drag a PDF file here to upload</div>
+              <input type="file" id="fileInput" name="file" accept=".pdf" />
+            </div>
+          </label>
+
+          <div class="file-name" id="fileName">No file selected</div>
+
+          <button type="submit" class="upload-btn">Upload PDF</button>
+
+          <div class="loading" id="loadingIndicator">
+            <div class="spinner"></div>
+            <div class="drop-text">Uploading your PDF...</div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const uploadForm = document.getElementById("uploadForm");
+    const fileInput = document.getElementById("fileInput");
+    const fileNameDisplay = document.getElementById("fileName");
+    const dropArea = document.getElementById("dropArea");
+    const loadingIndicator = document.getElementById("loadingIndicator");
+
+    // Show selected file name
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length > 0) {
+        fileNameDisplay.textContent = `Selected: ${fileInput.files[0].name}`;
+        uploadForm.submit(); // auto-submit
+      }
+    });
+
+    // Drag & drop behavior
+    ['dragenter', 'dragover'].forEach(evt => {
+      dropArea.addEventListener(evt, e => {
+        e.preventDefault();
+        dropArea.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(evt => {
+      dropArea.addEventListener(evt, e => {
+        e.preventDefault();
+        dropArea.classList.remove('dragover');
+      });
+    });
+
+    dropArea.addEventListener("drop", (e) => {
+      const droppedFile = e.dataTransfer.files[0];
+      if (droppedFile && droppedFile.type === "application/pdf") {
+        fileInput.files = e.dataTransfer.files;
+        fileNameDisplay.textContent = `Selected: ${droppedFile.name}`;
+        uploadForm.submit(); // auto-submit
+      } else {
+        alert("Only PDF files are allowed.");
+      }
+    });
+
+    uploadForm.addEventListener("submit", () => {
+      loadingIndicator.style.display = "block";
+    });
+  </script>
+</body>
+</html>

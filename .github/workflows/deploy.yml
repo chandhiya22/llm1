@@ -1,0 +1,87 @@
+name: CI/CD Pipeline for llm
+
+on:
+  push:
+    branches:
+      - master  # Trigger the pipeline on changes to the master branch
+
+jobs:
+  # CI - Build and Push to ECR
+  build_and_push:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout Code
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Set up AWS CLI
+      - name: Configure AWS CLI
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set region us-east-1
+
+      # Step 3: Login to AWS ECR
+      - name: Login to AWS ECR
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 469606548942.dkr.ecr.us-east-1.amazonaws.com
+
+      # Step 4: Build and Push Docker Image
+      - name: Build and Push Docker image
+        run: |
+          docker build -t llm .
+          docker tag llm:latest 469606548942.dkr.ecr.us-east-1.amazonaws.com/llm:latest
+          docker push 469606548942.dkr.ecr.us-east-1.amazonaws.com/llm:latest
+
+  # CD - Deploy to EC2 from ECR
+  deploy_to_ec2:
+    runs-on: ubuntu-latest
+    needs: build_and_push
+
+    steps:
+      # Step 1: Checkout Code (needed to keep workspace in context)
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Set up SSH
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.EC2_PRIVATE_KEY }}
+
+      # Step 3: Configure AWS CLI on EC2 (via SSH)
+      - name: Deploy to EC2 instance
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@3.95.241.184 << 'EOF'
+            # Configure AWS CLI
+            aws configure set aws_access_key_id '${{ secrets.AWS_ACCESS_KEY_ID }}'
+            aws configure set aws_secret_access_key '${{ secrets.AWS_SECRET_ACCESS_KEY }}'
+            aws configure set region us-east-1
+
+            # Stop and remove old container if exists
+            docker stop rag-container || true
+            docker rm rag-container || true
+
+            # Remove old image
+            docker rmi 469606548942.dkr.ecr.us-east-1.amazonaws.com/llm:latest || true
+
+            # Login to ECR
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 469606548942.dkr.ecr.us-east-1.amazonaws.com
+
+            # Pull latest image from ECR
+            docker pull 469606548942.dkr.ecr.us-east-1.amazonaws.com/llm:latest
+
+            # 🔑 Inject Gemini API key into .env
+            echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" > /home/ubuntu/.env
+
+            # Run the container with .env file
+            docker run -d --env-file /home/ubuntu/.env -p 8000:8000 --name rag-container 469606548942.dkr.ecr.us-east-1.amazonaws.com/llm:latest
+          EOF
+
+      # Step 4: Confirm container is running
+      - name: Check Docker container logs
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@3.95.241.184 << 'EOF'
+            docker ps
+          EOF

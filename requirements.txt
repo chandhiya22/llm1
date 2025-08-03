@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+langchain
+langchain-community
+huggingface_hub
+sentence-transformers
+faiss-cpu
+python-multipart
+PyPDF
+langchain-google-genai
+langchain-huggingface
+googletrans==4.0.0rc1
+
